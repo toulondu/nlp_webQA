@@ -253,16 +253,10 @@ def transpose_and_reshape_to_cal(input_tensor, batch_size, seq_length, num_heads
     return output_tensor
 
 # attention层，用于计算from_tensor和to_tensor的多头attention
-def attention_layer(from_tensor,
-                to_tensor,
-                attention_mask=None,
-                num_heads=1,
-                size_per_head=128,
-                attention_drop_rate = 0.0,
-                initializer_range=0.02):
+class AttentionLayer(Layer):
     """attention层，用于计算from_tensor和to_tensor的多头attention
-        实现基本参考bert论文和google bert实现，稍作简化
-        from_tensor与to_tensor相同则为self-attention
+    实现基本参考bert论文和google bert实现，稍作简化
+    from_tensor与to_tensor相同则为self-attention
 
     Args:
         from_tensor: float张量，shape为 [batch_size, 词/字个数seq_length，词向量embedding_size]
@@ -274,75 +268,6 @@ def attention_layer(from_tensor,
     Returns:
         float张量，形状为[batch_size,from_tensor的词/字个数seq_length,num_heads*size_per_head]
     """
-    from_shape,to_shape = tf.shape(from_tensor),tf.shape(to_tensor)
-    if(len(from_shape)!=3 or len(to_shape)!=3):
-        raise ValueError('Wrong shape of the input tensor,should be 3d matrix')
-    batch_size,from_seq_lenth = from_shape[0],from_shape[1]
-    to_seq_length = to_shape[1]
-
-    # 按bert实现，方便表示用：
-    # B = batch_size
-    # F = `from_tensor` sequence length
-    # T = `to_tensor` sequence length
-    # N = `num_heads`
-    # H = `size_per_head`
-    from_2d = reshape_to_2D(from_tensor)  #[B*F,embedding_size]
-    to_2d = reshape_to_2D(to_tensor)  #[B*T,embedding_size]
-    
-    # 下面通过3个FC计算出attention需要的Q，K，V
-    # Q：[B*F,N*H]
-    Q = Dense(
-        num_heads * size_per_head,
-        initializer = tf.compat.v1.truncated_normal_initializer(stddev=initializer_range)
-    )(from_2d)
-    
-    # K:[B*T,N*H]
-    K = Dense(
-        num_heads * size_per_head,
-        initializer = tf.compat.v1.truncated_normal_initializer(stddev=initializer_range)
-    )(to_2d)
-
-    # V:[B*T,N*H]
-    K = Dense(
-        num_heads * size_per_head,
-        initializer = tf.compat.v1.truncated_normal_initializer(stddev=initializer_range)
-    )(to_2d)
-
-    # Q:[B,N,F,H] K:[B,N,T,H]  -> attention(Q,K):[B,N,F,T]
-    Q = transpose_and_reshape_to_cal(Q, batch_size, from_seq_lenth, num_heads, size_per_head)
-    K = transpose_and_reshape_to_cal(K, batch_size, to_seq_length, num_heads, size_per_head)
-    attention_QK = tf.multiply(tf.matmul(Q,K), 1.0 / math.sqrt(float(size_per_head)))
-
-    if attention_mask is not None:
-        # `attention_mask` = [B, 1, F, T]
-        attention_mask = tf.expand_dims(attention_mask, axis=[1])
-
-         # 对应attention_mask 把词与词对应的位置设置为0，其它设置为-10000
-        adder = (1.0 - tf.cast(attention_mask, tf.float32)) * -10000.0
-
-        # 通过广播加到刚才计算好的attention矩阵上
-        attention_QK += adder
-
-    attention_softmax = Softmax()(attention_mask)
-    attention_softmax = Dropout(rate=attention_drop_rate)(attention_mask)
-    
-    # V: [B,N,T,H]
-    V = transpose_and_reshape_to_cal(V,batch_size,to_seq_length,num_heads,size_per_head)
-
-    # [B,N,F,H]
-    attention_res = tf.matmul(attention_QK,V)
-
-    # [B,F,N,H]
-    attention_res = tf.transpose(attention_res, [0,2,1,3])
-
-    attention_res = tf.reshape(
-        attention_res,
-        [batch_size, from_seq_lenth, num_heads*size_per_head]
-    )
-
-    return attention_res
-
-class AttentionLayer(Layer):
     def __init__(self,
                 num_heads=1,
                 size_per_head=128,
