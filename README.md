@@ -2,8 +2,6 @@
 A qa application, find right answer in passages that relate to the question.
 
 ### 问题
-来自于从苏剑林博客中看到的一个问题，[原文链接](https://spaces.ac.cn/archives/5409/comment-page-1)
-
 这是CIPS-SOGOU问答比赛的题目，数据集是 “一个问题，多个相关材料”的模式，题目是尝试从多段材料中找到正确问题的答案，答案一般为一个材料中片段。例如：
 ```
 question: 围魏救赵发生在哪个时期
@@ -14,8 +12,21 @@ passage3: 围魏救赵原指战国时齐军用围攻魏国的方法,迫使魏国
 passage4: 许攸建议袁绍派轻骑攻袭许都,迎接天子讨伐曹操,曹操首尾难顾,必败无疑(嗅到了围魏救赵的气息)
 ```
 
+苏剑林的一篇博文中有它对此的实现，[原文链接](https://spaces.ac.cn/archives/5409/comment-page-1)
+
 博主提供了一个非常好的实现，而这个库则是我自己的尝试，working on...
 
+### 文件说明
+model.py 是成功的尝试，主要使用了addictive Attention，膨胀卷积和 MLP 等结构
+经过150个epoch的训练后在dev集上达到了：
+```
+acc: 0.9136, f1: 0.9401, final: 0.9268, best final: 0.9268
+```
+这甚至超过了博主得到的结果。
+
+而model2.py则是失败的尝试，其间尝试使用了transformer,包括正常的attention和bert提供的self-attention，加入了位置信息等，但暂时没有得到好的结果。有空的话会再做尝试。
+
+checkpoint和best_model.weights等文件则是我训练后保存的模型权重，有兴趣的可以在上面做fine-turning。
 ### 环境
 
 - Platform: Windows
